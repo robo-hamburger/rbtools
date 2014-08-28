@@ -292,7 +292,12 @@ class ReviewBoardHTTPPasswordMgr(urllib2.HTTPPasswordMgr):
         self.otp_token_callback = otp_token_callback
 
     def find_user_password(self, realm, uri):
-        if realm == 'Web API':
+        # If this is an auth request for some other domain (since HTTP
+        # handlers are global), fall back to standard password management.
+        default_password = urllib2.HTTPPasswordMgr.find_user_password(
+            self, realm, uri)
+
+        if realm == 'Web API' or default_password == (None, None):
             if self.auth_callback:
                 username, password = self.auth_callback(realm, uri,
                                                         username=self.rb_user,
@@ -302,9 +307,7 @@ class ReviewBoardHTTPPasswordMgr(urllib2.HTTPPasswordMgr):
 
             return self.rb_user, self.rb_pass
         else:
-            # If this is an auth request for some other domain (since HTTP
-            # handlers are global), fall back to standard password management.
-            return urllib2.HTTPPasswordMgr.find_user_password(self, realm, uri)
+            return default_password
 
     def get_otp_token(self, uri, method):
         if self.otp_token_callback:
